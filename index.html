@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Cálculo de Tributos Aduaneros - Bolivia</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ============================================================
+       HEADER
+       ============================================================ -->
+  <header class="app-header">
+    <h1>Sistema de Cálculo de Tributos Aduaneros</h1>
+    <div class="header-info" id="system-info"></div>
+  </header>
+
+  <!-- ============================================================
+       MAIN
+       ============================================================ -->
+  <main class="app-main">
+
+    <div class="container">
+
+      <!-- Barra de pestañas -->
+      <nav class="tab-nav" id="tab-nav"></nav>
+
+      <!-- Tab: 1 Item -->
+      <section id="tab-single" class="tab-panel">
+        <div id="tab-single-content"></div>
+      </section>
+
+      <!-- Tab: Varios Items -->
+      <section id="tab-multiple" class="tab-panel">
+        <div id="tab-multiple-content"></div>
+      </section>
+
+      <!-- Tab: Tributo Omitido -->
+      <section id="tab-omitted" class="tab-panel">
+        <div id="tab-omitted-content"></div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- ============================================================
+       SCRIPTS
+       ============================================================ -->
+  <script src="js/constants.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/calculator.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
