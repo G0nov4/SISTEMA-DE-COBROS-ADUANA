@@ -387,24 +387,24 @@ const UI = {
       <div class="params-grid">
         <div class="field">
           <label for="omit-ufv-vto">UFV vencimiento (fecha original)</label>
-          <input type="number" id="omit-ufv-vto" step="0.00001" min="0" placeholder="2.35914" value="2.35914" />
+          <input type="number" id="omit-ufv-vto" step="0.00001" min="0" placeholder="Ej: 2.35914" />
         </div>
         <div class="field">
           <label for="omit-ufv-pago">UFV pago (fecha de pago)</label>
-          <input type="number" id="omit-ufv-pago" step="0.00001" min="0" placeholder="2.95157" value="2.95157" />
+          <input type="number" id="omit-ufv-pago" step="0.00001" min="0" placeholder="Ej: 2.95157" />
         </div>
         <div class="field">
           <label for="omit-dias">Días de mora (n)</label>
-          <input type="number" id="omit-dias" step="1" min="0" placeholder="1827" value="1827" />
+          <input type="number" id="omit-dias" step="1" min="0" placeholder="Ej: 1827" />
         </div>
         <div class="field">
           <label for="omit-tasa">Tasa de interés anual (r%)</label>
-          <input type="number" id="omit-tasa" step="0.01" min="0" placeholder="6" value="6" />
+          <input type="number" id="omit-tasa" step="0.01" min="0" placeholder="Ej: 6" />
           <small class="help-text">Tasa aplicable según Ley 2492 (ej: 6% para tramo 5-7 años)</small>
         </div>
         <div class="field">
           <label for="omit-multa-ufv">Multa por Contravención (UFV)</label>
-          <input type="number" id="omit-multa-ufv" step="1" min="0" placeholder="250" value="250" />
+          <input type="number" id="omit-multa-ufv" step="1" min="0" placeholder="Ej: 250" />
           <small class="help-text">Multa fijada en UFV según la contravención (Art. 165 Ley 2492)</small>
         </div>
       </div>
@@ -654,11 +654,16 @@ const UI = {
     const original = leer('orig');
     const fiscalizado = leer('fisc');
     const ga = Utils.getVal('omit-ga');
-    const ufvVencimiento = Utils.getVal('omit-ufv-vto') || 1;
-    const ufvPago = Utils.getVal('omit-ufv-pago') || 1;
-    const diasMora = Utils.getVal('omit-dias') || 0;
-    const tasaInteres = Utils.getVal('omit-tasa') || 0;
-    const multaUFV = Utils.getVal('omit-multa-ufv') || 0;
+
+    if (!ga || ga === 0) {
+      alert('Debe ingresar el Gravamen Arancelario (GA%) para calcular el tributo omitido.');
+      return;
+    }
+    const ufvVencimiento = Utils.getVal('omit-ufv-vto');
+    const ufvPago = Utils.getVal('omit-ufv-pago');
+    const diasMora = Utils.getVal('omit-dias');
+    const tasaInteres = Utils.getVal('omit-tasa');
+    const multaUFV = Utils.getVal('omit-multa-ufv');
 
     const resultado = Calculator.calcularTributoOmitidoCompleto({
       original, fiscalizado, ga,
@@ -671,10 +676,8 @@ const UI = {
   limpiarOmitido() {
     const form = document.getElementById('tab-omitted-content');
     if (form) {
-      form.querySelectorAll('input[type="text"], input[type="number"]').forEach(el => {
-        if (['omit-ufv-vto', 'omit-ufv-pago', 'omit-dias', 'omit-tasa'].includes(el.id)) return;
-        el.value = '';
-      });
+      form.querySelectorAll('input[type="text"], input[type="number"]').forEach(el => el.value = '');
+      form.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
     }
     Utils.clearContainer('omit-resultados');
   },
@@ -885,13 +888,20 @@ const UI = {
 
   _toolbarExport(containerId) {
     const id = encodeURIComponent(containerId);
+    const ICONS = {
+      copy: '<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M4 2v10h9V2H4zm0-1h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM2 4v10a1 1 0 0 0 1 1h8v-1H3V4H2z"/></svg>',
+      txt: '<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M4 1h5l4 4v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm5 .5V5h3.5L9 1.5zM5 7v1h6V7H5zm0 2v1h6V9H5zm0 2v1h4v-1H5z"/></svg>',
+      md: '<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M2 3h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm1 2v6h1.5V8.5l1.5 2 1.5-2V11H9V5H7.5l-1.5 2-1.5-2H3zm7.5 0v6H12V7.5L13.5 9 15 7.5V11h1.5V5H13l-1.5 2L10 5h.5z"/></svg>',
+      csv: '<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M2 2h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm0 1v10h12V3H2zm2 2h2v1H4V5zm0 2h2v1H4V7zm0 2h2v1H4V9zm3-4h5v1H7V5zm0 2h5v1H7V7zm0 2h5v1H7V9z"/></svg>',
+      pdf: '<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M4 1h5l4 4v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zm5 .5V5h3.5L9 1.5zM5 7.5a.5.5 0 0 0-.5.5v4a.5.5 0 0 0 .5.5h1a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H5zm0 1h1v2.5H5V8.5zm3 4a.5.5 0 0 1-.5-.5v-4a.5.5 0 0 1 .5-.5h1.5a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H8zm.5-1h1v-2h-1v2zm3-3a.5.5 0 0 0-.5.5v4a.5.5 0 0 0 .5.5h1.5V12H12v-1h1v-.5h-1V9h1.5V8.5H11.5z"/></svg>',
+    };
     return `
       <div class="export-toolbar">
-        <button class="btn-sm" onclick="UI._exportAction('${id}','copy')" title="Copiar al portapapeles">Copiar</button>
-        <button class="btn-sm" onclick="UI._exportAction('${id}','txt')" title="Descargar como TXT">TXT</button>
-        <button class="btn-sm" onclick="UI._exportAction('${id}','md')" title="Descargar como Markdown">MD</button>
-        <button class="btn-sm" onclick="UI._exportAction('${id}','csv')" title="Descargar como CSV (Excel)">Excel</button>
-        <button class="btn-sm" onclick="UI._exportAction('${id}','pdf')" title="Imprimir / PDF">PDF</button>
+        <button class="btn-sm" onclick="UI._exportAction('${id}','copy')" title="Copiar al portapapeles">${ICONS.copy} Copiar</button>
+        <button class="btn-sm" onclick="UI._exportAction('${id}','txt')" title="Descargar como TXT">${ICONS.txt} TXT</button>
+        <button class="btn-sm" onclick="UI._exportAction('${id}','md')" title="Descargar como Markdown">${ICONS.md} MD</button>
+        <button class="btn-sm" onclick="UI._exportAction('${id}','csv')" title="Descargar como CSV (Excel)">${ICONS.csv} Excel</button>
+        <button class="btn-sm" onclick="UI._exportAction('${id}','pdf')" title="Imprimir / PDF">${ICONS.pdf} PDF</button>
       </div>
     `;
   },

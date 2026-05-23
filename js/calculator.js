@@ -257,16 +257,20 @@ const Calculator = {
     const ivaOmitido = Utils.round2(fisc.iva - orig.iva);
     const to = Utils.round2(gaOmitido + ivaOmitido);
 
-    const mv = Utils.round2((ufvPago / ufvVencimiento - 1) * to);
+    const mv = (ufvVencimiento && ufvPago)
+      ? Utils.round2((ufvPago / ufvVencimiento - 1) * to)
+      : 0;
     const toActualizado = Utils.round2(to + mv);
-    const int = Utils.round2(toActualizado * Math.pow(1 + (tasaInteres / 100) / 360, diasMora) - toActualizado);
-    const multaBs = Utils.round2((multaUFV || 0) * ufvPago);
+    const int = (diasMora && tasaInteres)
+      ? Utils.round2(toActualizado * Math.pow(1 + (tasaInteres / 100) / 360, diasMora) - toActualizado)
+      : 0;
+    const multaBs = Utils.round2((multaUFV || 0) * (ufvPago || 1));
     const totalDeuda = Utils.round2(to + mv + int + multaBs);
 
     return {
       tabla1: { original: orig, fiscalizado: fisc },
       tabla2: { gaOmitido, ivaOmitido, to },
-      tabla3: { to, ufvVencimiento, ufvPago, diasMora, tasaInteres, multaUFV: multaUFV || 0, multaBs },
+      tabla3: { to, ufvVencimiento: ufvVencimiento || 0, ufvPago: ufvPago || 0, diasMora: diasMora || 0, tasaInteres: tasaInteres || 0, multaUFV: multaUFV || 0, multaBs },
       tabla4: { mv, toActualizado, int, multaBs, totalDeuda },
     };
   },
