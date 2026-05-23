@@ -69,12 +69,12 @@ const UI = {
           <label for="single-ga">Gravamen Arancelario GA (%)</label>
           <input type="number" id="single-ga" step="0.01" min="0" max="100" placeholder="0" />
         </div>
-        <div class="field checkbox-field">
-          <label class="checkbox-label">
-            <input type="checkbox" id="single-convenio" />
-            ¿Tiene convenio internacional?
-          </label>
-          <small class="help-text">Reduce el GA al ${CONVENIO_GA_FACTOR * 100}% del valor original</small>
+        <div class="field">
+          <label for="single-convenio">Convenio / Acuerdo</label>
+          <select id="single-convenio">
+            ${CONVENIO_OPCIONES.map(c => `<option value="${c.id}">${c.label}</option>`).join('')}
+          </select>
+          <small class="help-text">Seleccione el tipo de acuerdo. El certificado de origen (ej: ALADI, CAN) exenta el GA.</small>
         </div>
       </div>
 
@@ -88,50 +88,32 @@ const UI = {
         ).join('')}
       </div>
 
-      <h3>Transporte</h3>
-      <div class="form-grid">
-        <div class="field">
-          <label for="single-modo">Modo de Transporte</label>
-          <select id="single-modo">
-            ${MODOS_TRANSPORTE.map(m => `<option value="${m.id}">${m.label}</option>`).join('')}
-          </select>
-        </div>
-        <div class="field">
-          <label for="single-tipo">Tipo</label>
-          <select id="single-tipo">
-            ${TIPOS_TRANSPORTE.map(t => `<option value="${t.id}">${t.label}</option>`).join('')}
-          </select>
-        </div>
-        <div class="field">
-          <label for="single-transporte1">Transporte 1 (USD) - Flete internacional</label>
-          <input type="number" id="single-transporte1" step="0.01" min="0" placeholder="0.00" />
-        </div>
-        <div class="field">
-          <label for="single-transporte1-desc">Descripción Transporte 1</label>
-          <input type="text" id="single-transporte1-desc" placeholder="Ej: Flete marítimo Shanghai-Iquique" />
-        </div>
-        <div class="field">
-          <label for="single-transporte2">Transporte 2 (USD) - Hasta frontera</label>
-          <input type="number" id="single-transporte2" step="0.01" min="0" placeholder="0.00" />
-        </div>
-        <div class="field">
-          <label for="single-transporte2-desc">Descripción Transporte 2</label>
-          <input type="text" id="single-transporte2-desc" placeholder="Ej: Iquique-Pisiga" />
-        </div>
-      </div>
-
-      <div id="single-terrestre-section" style="display:none;">
-        <div class="form-grid cols-2">
-          <div class="field">
-            <label for="single-origen">Origen (terrestre)</label>
-            <input type="text" id="single-origen" placeholder="Ej: Iquique, Chile" />
+      <h3>Transporte / Fletes</h3>
+      <p class="help-text">
+        Agregue cada tramo de transporte. Marque <strong>"¿CIF?"</strong> si el tramo forma parte de la base aduanera
+        (transporte internacional y hasta la frontera boliviana). Los tramos internos en Bolivia
+        (ej: Pisiga-La Paz) NO deben marcarse.
+      </p>
+      <div id="single-transportes-container">
+        ${TRANSPORTE_LEGS_SUGERIDOS.map((leg, i) => `
+          <div class="form-row transporte-leg">
+            <div class="field flex-2">
+              <input type="text" class="transporte-desc" placeholder="Ej: Flete marítimo Shanghai-Iquique" value="${leg.descripcion}" />
+            </div>
+            <div class="field flex-1">
+              <input type="number" class="transporte-monto" step="0.01" min="0" placeholder="0.00" />
+            </div>
+            <label class="checkbox-label transporte-cif-label" title="Incluir en CIF">
+              <input type="checkbox" class="transporte-cif" ${leg.incluyeCIF ? 'checked' : ''} />
+              ¿CIF?
+            </label>
+            <button type="button" class="btn-remove-gasto" onclick="UI.eliminarTransporte(this)">✕</button>
           </div>
-          <div class="field">
-            <label for="single-destino">Destino (terrestre)</label>
-            <input type="text" id="single-destino" placeholder="Ej: La Paz, Bolivia" />
-          </div>
-        </div>
+        `).join('')}
       </div>
+      <button type="button" class="btn btn-secondary" onclick="UI.agregarTransporte('single-transportes-container')">
+        + Agregar tramo de transporte
+      </button>
 
       <h3>Seguro</h3>
       <div class="form-grid cols-1">
@@ -173,10 +155,7 @@ const UI = {
 
     container.appendChild(Utils.createElement('div', { id: 'single-resultados', class: 'resultados' }));
 
-    document.getElementById('single-modo').addEventListener('change', function () {
-      const section = document.getElementById('single-terrestre-section');
-      section.style.display = this.value === 'terrestre' ? '' : 'none';
-    });
+
   },
 
   /**
@@ -224,50 +203,31 @@ const UI = {
         ).join('')}
       </div>
 
-      <h3>Transporte</h3>
-      <div class="form-grid">
-        <div class="field">
-          <label for="multiple-modo">Modo de Transporte</label>
-          <select id="multiple-modo">
-            ${MODOS_TRANSPORTE.map(m => `<option value="${m.id}">${m.label}</option>`).join('')}
-          </select>
-        </div>
-        <div class="field">
-          <label for="multiple-tipo">Tipo</label>
-          <select id="multiple-tipo">
-            ${TIPOS_TRANSPORTE.map(t => `<option value="${t.id}">${t.label}</option>`).join('')}
-          </select>
-        </div>
-        <div class="field">
-          <label for="multiple-transporte1">Transporte 1 (USD)</label>
-          <input type="number" id="multiple-transporte1" step="0.01" min="0" placeholder="0.00" />
-        </div>
-        <div class="field">
-          <label for="multiple-transporte1-desc">Descripción Transporte 1</label>
-          <input type="text" id="multiple-transporte1-desc" placeholder="Ej: Flete marítimo" />
-        </div>
-        <div class="field">
-          <label for="multiple-transporte2">Transporte 2 (USD)</label>
-          <input type="number" id="multiple-transporte2" step="0.01" min="0" placeholder="0.00" />
-        </div>
-        <div class="field">
-          <label for="multiple-transporte2-desc">Descripción Transporte 2</label>
-          <input type="text" id="multiple-transporte2-desc" placeholder="Ej: Iquique-Pisiga" />
-        </div>
-      </div>
-
-      <div id="multiple-terrestre-section" style="display:none;">
-        <div class="form-grid cols-2">
-          <div class="field">
-            <label for="multiple-origen">Origen (terrestre)</label>
-            <input type="text" id="multiple-origen" placeholder="Ej: Iquique, Chile" />
+      <h3>Transporte / Fletes</h3>
+      <p class="help-text">
+        Agregue cada tramo de transporte. Marque <strong>"¿CIF?"</strong> si el tramo forma parte de la base aduanera
+        (transporte internacional y hasta la frontera boliviana). Los tramos internos en Bolivia NO deben marcarse.
+      </p>
+      <div id="multiple-transportes-container">
+        ${TRANSPORTE_LEGS_SUGERIDOS.map((leg, i) => `
+          <div class="form-row transporte-leg">
+            <div class="field flex-2">
+              <input type="text" class="transporte-desc" placeholder="Ej: Flete marítimo Shanghai-Iquique" value="${leg.descripcion}" />
+            </div>
+            <div class="field flex-1">
+              <input type="number" class="transporte-monto" step="0.01" min="0" placeholder="0.00" />
+            </div>
+            <label class="checkbox-label transporte-cif-label" title="Incluir en CIF">
+              <input type="checkbox" class="transporte-cif" ${leg.incluyeCIF ? 'checked' : ''} />
+              ¿CIF?
+            </label>
+            <button type="button" class="btn-remove-gasto" onclick="UI.eliminarTransporte(this)">✕</button>
           </div>
-          <div class="field">
-            <label for="multiple-destino">Destino (terrestre)</label>
-            <input type="text" id="multiple-destino" placeholder="Ej: La Paz, Bolivia" />
-          </div>
-        </div>
+        `).join('')}
       </div>
+      <button type="button" class="btn btn-secondary" onclick="UI.agregarTransporte('multiple-transportes-container')">
+        + Agregar tramo de transporte
+      </button>
 
       <h3>Seguro</h3>
       <div class="form-grid cols-1">
@@ -308,10 +268,7 @@ const UI = {
     container.appendChild(form);
     container.appendChild(Utils.createElement('div', { id: 'multiple-resultados', class: 'resultados' }));
 
-    document.getElementById('multiple-modo').addEventListener('change', function () {
-      const section = document.getElementById('multiple-terrestre-section');
-      if (section) section.style.display = this.value === 'terrestre' ? '' : 'none';
-    });
+
   },
 
   /**
@@ -335,11 +292,11 @@ const UI = {
             <label>GA (%)</label>
             <input type="number" class="item-ga" step="0.01" min="0" max="100" placeholder="0" />
           </div>
-          <div class="field checkbox-field">
-            <label class="checkbox-label">
-              <input type="checkbox" class="item-convenio" />
-              Convenio
-            </label>
+          <div class="field">
+            <label>Convenio</label>
+            <select class="item-convenio">
+              ${CONVENIO_OPCIONES.map(c => `<option value="${c.id}">${c.label}</option>`).join('')}
+            </select>
           </div>
           <div class="field item-actions">
             ${index > 0 ? `<button type="button" class="btn btn-danger btn-sm" onclick="UI.eliminarItemMultiple(this)">Eliminar</button>` : ''}
@@ -517,6 +474,57 @@ const UI = {
   },
 
   /**
+   * Agrega un tramo de transporte al contenedor
+   * @param {string} containerId
+   */
+  agregarTransporte(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const row = Utils.createElement('div', { class: 'form-row transporte-leg' });
+    row.innerHTML = `
+      <div class="field flex-2">
+        <input type="text" class="transporte-desc" placeholder="Ej: Flete marítimo Shanghai-Iquique" />
+      </div>
+      <div class="field flex-1">
+        <input type="number" class="transporte-monto" step="0.01" min="0" placeholder="0.00" />
+      </div>
+      <label class="checkbox-label transporte-cif-label">
+        <input type="checkbox" class="transporte-cif" checked />
+        ¿CIF?
+      </label>
+      <button type="button" class="btn-remove-gasto" onclick="UI.eliminarTransporte(this)">✕</button>
+    `;
+    container.appendChild(row);
+  },
+
+  /**
+   * Elimina un tramo de transporte
+   * @param {HTMLElement} btn
+   */
+  eliminarTransporte(btn) {
+    const row = btn.closest('.transporte-leg');
+    if (row) row.remove();
+  },
+
+  /**
+   * Recoge los transportes del contenedor
+   * @param {string} containerId
+   * @returns {Object[]} [{ desc, monto, incluyeCIF }]
+   */
+  _recogerTransportes(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+    const transportes = [];
+    container.querySelectorAll('.transporte-leg').forEach(row => {
+      const desc = row.querySelector('.transporte-desc')?.value || 'Transporte';
+      const monto = parseFloat(row.querySelector('.transporte-monto')?.value) || 0;
+      const incluyeCIF = row.querySelector('.transporte-cif')?.checked || false;
+      transportes.push({ desc, monto, incluyeCIF });
+    });
+    return transportes;
+  },
+
+  /**
    * Actualiza la info del incoterm seleccionado
    * @param {string} prefix - Prefijo del formulario (single, multiple)
    */
@@ -539,7 +547,7 @@ const UI = {
         descripcion: Utils.getText('single-descripcion') || 'Item 1',
         precio: Utils.getVal('single-precio'),
         ga: Utils.getVal('single-ga'),
-        convenio: Utils.isChecked('single-convenio'),
+        convenio: Utils.getSelect('single-convenio'),
       }],
       incoterm: Utils.getSelect('single-incoterm'),
       costosLocales: {
@@ -548,10 +556,7 @@ const UI = {
         despacho_exportacion: Utils.getVal('single-despacho_exportacion'),
         carga_buque: Utils.getVal('single-carga_buque'),
       },
-      transporte1: Utils.getVal('single-transporte1'),
-      transporte1Desc: Utils.getText('single-transporte1-desc'),
-      transporte2: Utils.getVal('single-transporte2'),
-      transporte2Desc: Utils.getText('single-transporte2-desc'),
+      transportes: this._recogerTransportes('single-transportes-container'),
       seguro: Utils.getVal('single-seguro'),
       otrosGastos: this._recogerOtrosGastos('single-otros-container'),
     };
@@ -570,7 +575,7 @@ const UI = {
       const desc = row.querySelector('.item-desc')?.value || '';
       const precio = parseFloat(row.querySelector('.item-precio')?.value) || 0;
       const ga = parseFloat(row.querySelector('.item-ga')?.value) || 0;
-      const convenio = row.querySelector('.item-convenio')?.checked || false;
+      const convenio = row.querySelector('.item-convenio')?.value || 'none';
       if (precio > 0) {
         items.push({ descripcion: desc, precio, ga, convenio });
       }
@@ -585,10 +590,7 @@ const UI = {
         despacho_exportacion: Utils.getVal('multiple-despacho_exportacion'),
         carga_buque: Utils.getVal('multiple-carga_buque'),
       },
-      transporte1: Utils.getVal('multiple-transporte1'),
-      transporte1Desc: Utils.getText('multiple-transporte1-desc'),
-      transporte2: Utils.getVal('multiple-transporte2'),
-      transporte2Desc: Utils.getText('multiple-transporte2-desc'),
+      transportes: this._recogerTransportes('multiple-transportes-container'),
       seguro: Utils.getVal('multiple-seguro'),
       otrosGastos: this._recogerOtrosGastos('multiple-otros-container'),
     };
@@ -794,6 +796,7 @@ const UI = {
           <div class="omitido-valor">${bs(r.tabla4.totalDeuda)}</div>
           <div class="omitido-factor">TO ${bs(r.tabla2.to)} + MV ${bs(r.tabla4.mv)} + INT ${bs(r.tabla4.int)} + Multa ${bs(r.tabla4.multaBs)}</div>
         </div>
+        ${this._toolbarExport('omit-resultados')}
       </div>
     `;
     container.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -819,7 +822,7 @@ const UI = {
         <td>${item.descripcion || `Item ${idx + 1}`}</td>
         <td>${Utils.formatUSD(item.precio)}</td>
         <td>${item.ga}%</td>
-        <td>${item.convenio ? 'Sí' : 'No'}</td>
+        <td>${({ none: 'No', partial: 'Parcial', full: 'Exento' })[item.convenio] || 'No'}</td>
         <td><strong>${Utils.formatUSD(fobIndividuals[idx])}</strong></td>
       </tr>`;
     });
@@ -828,21 +831,26 @@ const UI = {
 
     html += '<h4>Liquidación General</h4>';
     html += '<div class="table-responsive"><table class="result-table"><tbody>';
-    const liqRows = [
-      { label: 'FOB', valor: liquidacion.fob, moneda: 'USD' },
-      { label: 'Transporte 1', valor: liquidacion.transporte1, moneda: 'USD' },
-      { label: 'Transporte 2', valor: liquidacion.transporte2, moneda: 'USD' },
-      { label: 'Seguro', valor: liquidacion.seguro, moneda: 'USD' },
-      { label: 'Otros Gastos', valor: liquidacion.otrosGastos, moneda: 'USD' },
-      { label: 'CIF (USD)', valor: liquidacion.cifF, moneda: 'USD', total: true },
-      { label: 'CIF (Bs)', valor: liquidacion.cifA, moneda: 'Bs', total: true },
-    ];
-    liqRows.forEach(r => {
-      html += `<tr${r.total ? ' class="total-row"' : ''}>
-        <td>${r.label}</td>
-        <td>${r.moneda === 'USD' ? Utils.formatUSD(r.valor) : Utils.formatBOB(r.valor)}</td>
-      </tr>`;
-    });
+    html += `<tr><td>FOB</td><td>${Utils.formatUSD(liquidacion.fob)}</td></tr>`;
+    const ts = liquidacion.transportes || [];
+    const tsCIF = ts.filter(t => t.incluyeCIF);
+    const tsNoCIF = ts.filter(t => !t.incluyeCIF);
+    if (tsCIF.length) {
+      tsCIF.forEach(t => {
+        html += `<tr><td class="sub-row">↳ ${t.desc}</td><td>${Utils.formatUSD(t.monto)}</td></tr>`;
+      });
+    }
+    if (tsNoCIF.length) {
+      const totalNoCIF = Utils.sum(tsNoCIF.map(t => t.monto));
+      tsNoCIF.forEach(t => {
+        html += `<tr><td class="sub-row sub-row--nocif">↳ ${t.desc} <small>(no CIF)</small></td><td>${Utils.formatUSD(t.monto)}</td></tr>`;
+      });
+    }
+    html += `<tr><td><strong>Flete CIF</strong></td><td><strong>${Utils.formatUSD(liquidacion.fleteCIF)}</strong></td></tr>`;
+    html += `<tr><td>Seguro</td><td>${Utils.formatUSD(liquidacion.seguro)}</td></tr>`;
+    html += `<tr><td>Otros Gastos</td><td>${Utils.formatUSD(liquidacion.otrosGastos)}</td></tr>`;
+    html += `<tr class="total-row"><td><strong>CIF (USD)</strong></td><td><strong>${Utils.formatUSD(liquidacion.cifF)}</strong></td></tr>`;
+    html += `<tr class="total-row"><td><strong>CIF (Bs)</strong></td><td><strong>${Utils.formatBOB(liquidacion.cifA)}</strong></td></tr>`;
     html += '</tbody></table></div>';
 
     html += '<h4>Tributos por Ítem</h4>';
@@ -853,7 +861,7 @@ const UI = {
       html += `<tr>
         <td>${item.descripcion}</td>
         <td>${Utils.formatBOB(item.fpxFob)}</td>
-        <td>${item.gaEfectivo}%${item.convenio ? `*` : ''}</td>
+        <td>${item.gaEfectivo}%${item.convenio !== 'none' ? `*` : ''}</td>
         <td>${Utils.formatBOB(item.ga)}</td>
         <td>${Utils.formatBOB(item.bi)}</td>
         <td>${Utils.formatBOB(item.iva)}</td>
@@ -866,13 +874,53 @@ const UI = {
     html += `<div class="total-valor">${Utils.formatBOB(totalTributos)}</div>`;
     html += `</div>`;
 
-    if (data.items.some(i => i.convenio)) {
-      html += '<p class="help-text">* GA reducido por convenio internacional (factor: ' + (CONVENIO_GA_FACTOR * 100) + '%)</p>';
+    if (data.items.some(i => i.convenio !== 'none')) {
+      html += '<p class="help-text">* <b>Parcial</b> = GA al ' + (CONVENIO_GA_FACTOR * 100) + '% | <b>Exento</b> = GA 0% (certificado de origen)</p>';
     }
 
+    html += this._toolbarExport(containerId);
     html += '</div>';
     container.innerHTML = html;
     container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  },
+
+  _toolbarExport(containerId) {
+    const id = encodeURIComponent(containerId);
+    return `
+      <div class="export-toolbar">
+        <button class="btn btn-sm" onclick="UI._exportAction('${id}','copy')" title="Copiar al portapapeles">📋 Copiar</button>
+        <button class="btn btn-sm" onclick="UI._exportAction('${id}','txt')" title="Descargar como TXT">📄 TXT</button>
+        <button class="btn btn-sm" onclick="UI._exportAction('${id}','md')" title="Descargar como Markdown">📝 MD</button>
+        <button class="btn btn-sm" onclick="UI._exportAction('${id}','csv')" title="Descargar como CSV (Excel)">📊 Excel</button>
+        <button class="btn btn-sm" onclick="UI._exportAction('${id}','pdf')" title="Imprimir / PDF">🖨️ PDF</button>
+      </div>
+    `;
+  },
+
+  _exportAction(containerId, format) {
+    const { text, csv, md } = Utils.exportarResultados(containerId);
+    const ts = new Date().toISOString().slice(0, 10);
+
+    switch (format) {
+      case 'copy':
+        Utils.copyText(text).then(ok => {
+          if (ok) alert('Resultados copiados al portapapeles');
+          else alert('No se pudo copiar. Intente manualmente.');
+        });
+        break;
+      case 'txt':
+        Utils.download(`tributos-${ts}.txt`, text, 'text/plain;charset=utf-8');
+        break;
+      case 'md':
+        Utils.download(`tributos-${ts}.md`, md, 'text/markdown;charset=utf-8');
+        break;
+      case 'csv':
+        Utils.download(`tributos-${ts}.csv`, csv, 'text/csv;charset=utf-8');
+        break;
+      case 'pdf':
+        window.print();
+        break;
+    }
   },
 
   /**

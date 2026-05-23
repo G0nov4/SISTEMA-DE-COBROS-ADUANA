@@ -45,22 +45,27 @@ const Calculator = {
    * Calcula el FOB individual de cada item según el Incoterm
    *
    * Reglas por Incoterm:
-   * - EXW: Precio + costos locales pre-FOB (distribuidos proporcionalmente)
-   * - FOB: El precio ya es FOB
-   * - CFR: Precio - flete marítimo (incluido en el precio)
-   * - CIF: Precio - flete - seguro (incluidos en el precio)
-   * - DAP: Precio - todos los costos post-FOB
+   * - EXW: Precio + costos locales pre-FOB
+   * - FOB: Precio (sin ajuste)
+   * - CFR: Precio - transporteCIF (incluido en el precio)
+   * - CIF: Precio - transporteCIF - seguro (incluidos en el precio)
+   * - DAP: Precio - transporteTotal - seguro - otros (todo incluido)
    *
    * @param {Object[]} items - Array de items { precio, ga, convenio }
    * @param {string} incoterm - Código Incoterm
    * @param {Object} costos - Todos los costos ingresados
-   * @returns {Object} { fobIndividuals: number[], totalFob: number, detalle: Object }
+   * @returns {Object} { fobIndividuals, totalFob, transportesCIF, transportesNoCIF }
    */
+  _montoCIFdeTransporte(t) {
+    return Utils.round2((Number(t.monto) || 0) * (Number(t.cifPct) || 0) / 100);
+  },
+
   calcularFOBIndividual(items, incoterm, costos) {
     const totalPrecio = Utils.sum(items.map(i => i.precio));
     const costosLocalesTotal = this._totalCostosLocales(costos.costosLocales);
-    const transporte1 = costos.transporte1 || 0;
-    const seguro = costos.seguro || 0;
+    const transporteCIF = Utils.sum(costos.transportes.map(t => this._montoCIFdeTransporte(t)));
+    const transporteTotal = Utils.sum(costos.transportes.map(t => Number(t.monto) || 0));
+    const seguro = Number(costos.seguro) || 0;
     const otrosTotal = Utils.sum(Object.values(costos.otrosGastos || {}));
 
     const fobIndividuals = items.map(item => {
@@ -71,18 +76,19 @@ const Calculator = {
         case 'EXW':
           return Utils.round2(precio + proporcion * costosLocalesTotal);
 
+        case 'FCA':
         case 'FOB':
           return Utils.round2(precio);
 
         case 'CFR':
-          return Utils.round2(precio - proporcion * transporte1);
+          return Utils.round2(precio - proporcion * transporteCIF);
 
         case 'CIF':
-          return Utils.round2(precio - proporcion * (transporte1 + seguro));
+          return Utils.round2(precio - proporcion * (transporteCIF + seguro));
 
         case 'DAP': {
-          const costosPostFOB = transporte1 + (costos.transporte2 || 0) + seguro + otrosTotal;
-          return Utils.round2(precio - proporcion * costosPostFOB);
+          const postFOB = transporteTotal + seguro + otrosTotal;
+          return Utils.round2(precio - proporcion * postFOB);
         }
 
         default:
@@ -91,28 +97,31 @@ const Calculator = {
     });
 
     const totalFob = Utils.round2(Utils.sum(fobIndividuals));
+    const transportesNoCIF = costos.transportes.filter(t => (Number(t.cifPct) || 0) < 100).map(t => ({
+      ...t, montoNoCIF: Utils.round2((Number(t.monto) || 0) * (100 - (Number(t.cifPct) || 0)) / 100)
+    }));
 
-    return { fobIndividuals, totalFob };
+    return { fobIndividuals, totalFob, transportesCIF: transporteCIF, transportesNoCIF };
   },
 
   /**
    * Calcula la liquidación general del embarque
    *
-   * @param {number} totalFob - Suma de FOB individuales
-   * @param {Object} costos - Todos los costos
-   * @returns {Object} { fob, transporte1, transporte2, seguro, otrosGastos, cifF, cifA }
+   * @param {number} totalFob
+   * @param {Object} costos
+   * @returns {Object} { fob, transportes, fleteCIF, seguro, otrosGastos, cifF, cifA }
    */
   liquidacionGeneral(totalFob, costos) {
     const fob = totalFob;
-    const transporte1 = Number(costos.transporte1) || 0;
-    const transporte2 = Number(costos.transporte2) || 0;
+    const transportes = costos.transportes || [];
+    const fleteCIF = Utils.sum(transportes.map(t => Calculator._montoCIFdeTransporte(t)));
     const seguro = Number(costos.seguro) || 0;
     const otrosGastos = Utils.sum(Object.values(costos.otrosGastos || {}));
 
-    const cifF = Utils.round2(fob + transporte1 + transporte2 + seguro + otrosGastos);
+    const cifF = Utils.round2(fob + fleteCIF + seguro + otrosGastos);
     const cifA = Utils.round2(Utils.usdToBob(cifF));
 
-    return { fob, transporte1, transporte2, seguro, otrosGastos, cifF, cifA };
+    return { fob, transportes, fleteCIF, seguro, otrosGastos, cifF, cifA };
   },
 
   /**
@@ -140,8 +149,10 @@ const Calculator = {
       const gaPorcentaje = Number(item.ga) || 0;
 
       let gaEfectivo = gaPorcentaje;
-      if (item.convenio) {
+      if (item.convenio === 'partial') {
         gaEfectivo = gaPorcentaje * CONVENIO_GA_FACTOR;
+      } else if (item.convenio === 'full') {
+        gaEfectivo = 0;
       }
 
       const fpxFob = Utils.round2(proporcion * cifA);
@@ -185,14 +196,13 @@ const Calculator = {
    * @param {Object[]} params.items - Array de items { descripcion, precio, ga, convenio }
    * @param {string} params.incoterm - Código Incoterm
    * @param {Object} params.costosLocales - Costos pre-FOB
-   * @param {number} params.transporte1 - Primer transporte
-   * @param {number} params.transporte2 - Segundo transporte
+   * @param {Object[]} params.transportes - Array de { desc, monto, incluyeCIF }
    * @param {number} params.seguro - Seguro
    * @param {Object} params.otrosGastos - Otros gastos { descripcion: monto }
    * @returns {Object} Resultado completo del cálculo
    */
-  calcularCompleto({ items, incoterm, costosLocales, transporte1, transporte2, seguro, otrosGastos }) {
-    const costos = { costosLocales, transporte1, transporte2, seguro, otrosGastos };
+  calcularCompleto({ items, incoterm, costosLocales, transportes, seguro, otrosGastos }) {
+    const costos = { costosLocales, transportes, seguro, otrosGastos };
 
     const { fobIndividuals, totalFob } = this.calcularFOBIndividual(items, incoterm, costos);
     const liquidacion = this.liquidacionGeneral(totalFob, costos);

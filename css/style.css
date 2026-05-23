@@ -495,6 +495,28 @@ hr {
   background: rgba(26, 82, 118, 0.03);
 }
 
+.sub-row {
+  padding-left: 2rem !important;
+  font-size: 0.82rem;
+  color: var(--text-light);
+}
+
+.sub-row--nocif {
+  color: var(--danger);
+  opacity: 0.8;
+}
+
+.transporte-cif-label {
+  white-space: nowrap;
+  font-size: 0.8rem !important;
+  margin-bottom: 0 !important;
+  padding: 0.3rem 0.5rem;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  gap: 0.3rem !important;
+}
+
 .result-table .total-row {
   background: rgba(26, 82, 118, 0.06);
   font-weight: 600;
@@ -732,6 +754,44 @@ hr {
 }
 
 /* ============================================================
+   EXPORT TOOLBAR
+   ============================================================ */
+.export-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-light);
+  flex-wrap: wrap;
+}
+
+.export-toolbar .btn-sm {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.65rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--font);
+}
+
+.export-toolbar .btn-sm:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* ============================================================
+   CONVENIO SELECT (inline in item rows)
+   ============================================================ */
+.item-form-grid select.item-convenio {
+  font-size: 0.8rem;
+  padding: 0.45rem 0.5rem;
+}
+
+/* ============================================================
    PRINT
    ============================================================ */
 @media print {
@@ -739,8 +799,9 @@ hr {
     position: static;
   }
 
-  .tab-nav {
-    display: none;
+  .tab-nav,
+  .tab-btn {
+    display: none !important;
   }
 
   .tab-panel {
@@ -748,17 +809,20 @@ hr {
   }
 
   .btn,
-  .btn-remove-gasto {
-    display: none !important;
-  }
-
+  .btn-remove-gasto,
+  .export-toolbar,
   .form-actions {
-    display: none;
+    display: none !important;
   }
 
   .resultados-card {
     box-shadow: none;
     border: 1px solid #ccc;
     page-break-inside: avoid;
+  }
+
+  body {
+    background: #fff;
+    font-size: 11pt;
   }
 }

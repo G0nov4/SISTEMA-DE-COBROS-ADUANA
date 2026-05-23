@@ -195,4 +195,150 @@ const Utils = {
       el.style.display = show ? '' : 'none';
     }
   },
+
+  /**
+   * Exporta contenido a un archivo descargable
+   * @param {string} filename - Nombre del archivo
+   * @param {string} content - Contenido
+   * @param {string} mimeType - Tipo MIME
+   */
+  download(filename, content, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  /**
+   * Copia texto al portapapeles
+   * @param {string} text
+   * @returns {Promise<boolean>}
+   */
+  async copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    }
+  },
+
+  /**
+   * Convierte un elemento HTML table a texto tabular
+   * @param {HTMLElement} tableEl
+   * @returns {string}
+   */
+  tableToText(tableEl) {
+    const rows = tableEl.querySelectorAll('tr');
+    const lines = [];
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('th, td');
+      const vals = [];
+      cells.forEach(c => {
+        let text = c.textContent.trim().replace(/\s+/g, ' ');
+        vals.push(text);
+      });
+      lines.push(vals.join('\t'));
+    });
+    return lines.join('\n');
+  },
+
+  /**
+   * Genera CSV (Excel-compatible) desde un elemento table
+   * @param {HTMLElement} tableEl
+   * @returns {string}
+   */
+  tableToCSV(tableEl) {
+    const rows = tableEl.querySelectorAll('tr');
+    const lines = [];
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('th, td');
+      const vals = [];
+      cells.forEach(c => {
+        let text = c.textContent.trim().replace(/\s+/g, ' ');
+        if (text.includes(',') || text.includes('"')) {
+          text = '"' + text.replace(/"/g, '""') + '"';
+        }
+        vals.push(text);
+      });
+      lines.push(vals.join(','));
+    });
+    return lines.join('\r\n');
+  },
+
+  /**
+   * Genera Markdown desde un elemento table
+   * @param {HTMLElement} tableEl
+   * @returns {string}
+   */
+  tableToMD(tableEl) {
+    const rows = tableEl.querySelectorAll('tr');
+    if (!rows.length) return '';
+    const lines = [];
+
+    const headerCells = rows[0].querySelectorAll('th, td');
+    const header = headerCells.map(c => c.textContent.trim().replace(/\s+/g, ' '));
+    lines.push('| ' + header.join(' | ') + ' |');
+    lines.push('| ' + header.map(() => '---').join(' | ') + ' |');
+
+    for (let i = 1; i < rows.length; i++) {
+      const cells = rows[i].querySelectorAll('td');
+      const vals = cells.map(c => c.textContent.trim().replace(/\s+/g, ' '));
+      lines.push('| ' + vals.join(' | ') + ' |');
+    }
+
+    return lines.join('\n');
+  },
+
+  /**
+   * Concatena todas las tablas de resultados en un solo texto
+   * @param {string} containerId - ID del contenedor de resultados
+   * @returns {{ text: string, csv: string, md: string }}
+   */
+  exportarResultados(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return { text: '', csv: '', md: '' };
+
+    const tables = container.querySelectorAll('.result-table');
+    const titulos = container.querySelectorAll('h3, h4');
+    const textParts = [];
+    const csvParts = [];
+    const mdParts = [];
+
+    let ti = 0;
+    tables.forEach((tbl, idx) => {
+      while (ti < titulos.length && titulos[ti].closest('.resultados-card')) {
+        if (titulos[ti].closest('.resultados-card') === container.querySelector('.resultados-card')) {
+          // fall through
+        }
+        ti++;
+      }
+      const prevH = tbl.closest('.resultados-card')?.querySelector('h3');
+      if (prevH) textParts.push('\n' + prevH.textContent.trim() + '\n');
+      if (prevH) mdParts.push('\n## ' + prevH.textContent.trim() + '\n');
+
+      textParts.push(this.tableToText(tbl));
+      csvParts.push(this.tableToCSV(tbl));
+      mdParts.push(this.tableToMD(tbl));
+    });
+
+    return {
+      text: textParts.join('\n\n'),
+      csv: csvParts.join('\n\n'),
+      md: mdParts.join('\n\n'),
+    };
+  },
 };

@@ -13,11 +13,27 @@ const TC = 6.96;
 const IVA_RATE = 14.94;
 const CONVENIO_GA_FACTOR = 0.5;
 
+const AIRE_CIF_PCT_DEFAULT = 25;
+
+const CONVENIO_OPCIONES = [
+  { id: 'none', label: 'Sin convenio', desc: 'GA completo' },
+  { id: 'partial', label: 'Convenio', desc: `GA al ${CONVENIO_GA_FACTOR * 100}%` },
+  { id: 'full', label: 'Certificado de origen', desc: 'GA 0% (exento)' },
+];
+
 const COSTOS_LOCALES_PREFOB = [
   { id: 'estiba', label: 'Estiba', default: 0 },
   { id: 'transporte_puerto', label: 'Transporte al puerto', default: 0 },
   { id: 'despacho_exportacion', label: 'Despacho de exportación', default: 0 },
   { id: 'carga_buque', label: 'Carga al buque', default: 0 },
+];
+
+const TRANSPORTE_LEGS_SUGERIDOS = [
+  { descripcion: 'Flete marítimo (Shanghai-Iquique)', cifPct: 100 },
+  { descripcion: 'Flete aéreo internacional', cifPct: AIRE_CIF_PCT_DEFAULT },
+  { descripcion: 'Flete Iquique-Pisiga (hasta frontera)', cifPct: 100 },
+  { descripcion: 'Flete Pisiga-La Paz (interno Bolivia)', cifPct: 0 },
+  { descripcion: 'Manejo en terminal aérea destino', cifPct: 0 },
 ];
 
 const OTROS_GASTOS_SUGERIDOS = [
@@ -33,6 +49,11 @@ const INCOTERMS = {
     label: 'EXW (Ex Works / En Fábrica)',
     incluye: [],
     descripcion: 'El vendedor entrega la mercancía en su fábrica. El comprador asume todos los costos y riesgos desde la recogida.',
+  },
+  FCA: {
+    label: 'FCA (Free Carrier / Franco Transportista)',
+    incluye: ['despacho_exportacion'],
+    descripcion: 'El vendedor entrega la mercancía al transportista en el lugar acordado. Ideal para carga aérea y multimodal. El precio incluye despacho de exportación.',
   },
   FOB: {
     label: 'FOB (Free On Board / Franco a Bordo)',
@@ -56,13 +77,4 @@ const INCOTERMS = {
   },
 };
 
-const MODOS_TRANSPORTE = [
-  { id: 'maritimo', label: 'Marítimo' },
-  { id: 'aereo', label: 'Aéreo' },
-  { id: 'terrestre', label: 'Terrestre' },
-];
 
-const TIPOS_TRANSPORTE = [
-  { id: 'modal', label: 'Modal' },
-  { id: 'multimodal', label: 'Multimodal' },
-];
