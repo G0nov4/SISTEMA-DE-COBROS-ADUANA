@@ -103,14 +103,15 @@ const UI = {
             <div class="field flex-1">
               <input type="number" class="transporte-monto" step="0.01" min="0" placeholder="0.00" />
             </div>
-            <label class="checkbox-label transporte-cif-label" title="Incluir en CIF">
-              <input type="checkbox" class="transporte-cif" ${leg.incluyeCIF ? 'checked' : ''} />
-              ¿CIF?
-            </label>
+            <div class="field" style="max-width:90px;">
+              <input type="number" class="transporte-cif-pct" step="1" min="0" max="100" placeholder="100" value="${leg.cifPct}" title="% que va al CIF" />
+              <small class="help-text">% CIF</small>
+            </div>
             <button type="button" class="btn-remove-gasto" onclick="UI.eliminarTransporte(this)">✕</button>
           </div>
         `).join('')}
       </div>
+      <p class="help-text">Para flete aéreo, usualmente solo el <strong>${AIRE_CIF_PCT_DEFAULT}%</strong> va al CIF (D.S. aplicable). Para transporte marítimo/terrestre hasta frontera: <strong>100%</strong>. Para tramos internos Bolivia: <strong>0%</strong>.</p>
       <button type="button" class="btn btn-secondary" onclick="UI.agregarTransporte('single-transportes-container')">
         + Agregar tramo de transporte
       </button>
@@ -217,14 +218,15 @@ const UI = {
             <div class="field flex-1">
               <input type="number" class="transporte-monto" step="0.01" min="0" placeholder="0.00" />
             </div>
-            <label class="checkbox-label transporte-cif-label" title="Incluir en CIF">
-              <input type="checkbox" class="transporte-cif" ${leg.incluyeCIF ? 'checked' : ''} />
-              ¿CIF?
-            </label>
+            <div class="field" style="max-width:90px;">
+              <input type="number" class="transporte-cif-pct" step="1" min="0" max="100" placeholder="100" value="${leg.cifPct}" title="% que va al CIF" />
+              <small class="help-text">% CIF</small>
+            </div>
             <button type="button" class="btn-remove-gasto" onclick="UI.eliminarTransporte(this)">✕</button>
           </div>
         `).join('')}
       </div>
+      <p class="help-text">Para flete aéreo, usualmente solo el <strong>${AIRE_CIF_PCT_DEFAULT}%</strong> va al CIF. Marítimo/terrestre hasta frontera: <strong>100%</strong>. Interno Bolivia: <strong>0%</strong>.</p>
       <button type="button" class="btn btn-secondary" onclick="UI.agregarTransporte('multiple-transportes-container')">
         + Agregar tramo de transporte
       </button>
@@ -488,10 +490,10 @@ const UI = {
       <div class="field flex-1">
         <input type="number" class="transporte-monto" step="0.01" min="0" placeholder="0.00" />
       </div>
-      <label class="checkbox-label transporte-cif-label">
-        <input type="checkbox" class="transporte-cif" checked />
-        ¿CIF?
-      </label>
+      <div class="field" style="max-width:90px;">
+        <input type="number" class="transporte-cif-pct" step="1" min="0" max="100" placeholder="100" value="100" title="% que va al CIF" />
+        <small class="help-text">% CIF</small>
+      </div>
       <button type="button" class="btn-remove-gasto" onclick="UI.eliminarTransporte(this)">✕</button>
     `;
     container.appendChild(row);
@@ -518,8 +520,9 @@ const UI = {
     container.querySelectorAll('.transporte-leg').forEach(row => {
       const desc = row.querySelector('.transporte-desc')?.value || 'Transporte';
       const monto = parseFloat(row.querySelector('.transporte-monto')?.value) || 0;
-      const incluyeCIF = row.querySelector('.transporte-cif')?.checked || false;
-      transportes.push({ desc, monto, incluyeCIF });
+      const cifPct = parseFloat(row.querySelector('.transporte-cif-pct')?.value);
+      const pct = (!isNaN(cifPct) && cifPct >= 0 && cifPct <= 100) ? cifPct : 100;
+      transportes.push({ desc, monto, cifPct: pct });
     });
     return transportes;
   },
@@ -833,19 +836,15 @@ const UI = {
     html += '<div class="table-responsive"><table class="result-table"><tbody>';
     html += `<tr><td>FOB</td><td>${Utils.formatUSD(liquidacion.fob)}</td></tr>`;
     const ts = liquidacion.transportes || [];
-    const tsCIF = ts.filter(t => t.incluyeCIF);
-    const tsNoCIF = ts.filter(t => !t.incluyeCIF);
-    if (tsCIF.length) {
-      tsCIF.forEach(t => {
-        html += `<tr><td class="sub-row">↳ ${t.desc}</td><td>${Utils.formatUSD(t.monto)}</td></tr>`;
-      });
-    }
-    if (tsNoCIF.length) {
-      const totalNoCIF = Utils.sum(tsNoCIF.map(t => t.monto));
-      tsNoCIF.forEach(t => {
-        html += `<tr><td class="sub-row sub-row--nocif">↳ ${t.desc} <small>(no CIF)</small></td><td>${Utils.formatUSD(t.monto)}</td></tr>`;
-      });
-    }
+    ts.forEach(t => {
+      const montoCIF = Utils.round2((t.monto || 0) * (t.cifPct || 0) / 100);
+      const montoNoCIF = (t.monto || 0) - montoCIF;
+      const pct = t.cifPct || 0;
+      let label = `↳ ${t.desc}`;
+      if (pct !== 100) label += ` <small>(${pct}% CIF = ${Utils.formatUSD(montoCIF)})</small>`;
+      const cls = pct === 0 ? 'sub-row sub-row--nocif' : 'sub-row';
+      html += `<tr><td class="${cls}">${label}</td><td>${Utils.formatUSD(t.monto)}</td></tr>`;
+    });
     html += `<tr><td><strong>Flete CIF</strong></td><td><strong>${Utils.formatUSD(liquidacion.fleteCIF)}</strong></td></tr>`;
     html += `<tr><td>Seguro</td><td>${Utils.formatUSD(liquidacion.seguro)}</td></tr>`;
     html += `<tr><td>Otros Gastos</td><td>${Utils.formatUSD(liquidacion.otrosGastos)}</td></tr>`;
@@ -888,11 +887,11 @@ const UI = {
     const id = encodeURIComponent(containerId);
     return `
       <div class="export-toolbar">
-        <button class="btn btn-sm" onclick="UI._exportAction('${id}','copy')" title="Copiar al portapapeles">📋 Copiar</button>
-        <button class="btn btn-sm" onclick="UI._exportAction('${id}','txt')" title="Descargar como TXT">📄 TXT</button>
-        <button class="btn btn-sm" onclick="UI._exportAction('${id}','md')" title="Descargar como Markdown">📝 MD</button>
-        <button class="btn btn-sm" onclick="UI._exportAction('${id}','csv')" title="Descargar como CSV (Excel)">📊 Excel</button>
-        <button class="btn btn-sm" onclick="UI._exportAction('${id}','pdf')" title="Imprimir / PDF">🖨️ PDF</button>
+        <button class="btn-sm" onclick="UI._exportAction('${id}','copy')" title="Copiar al portapapeles">Copiar</button>
+        <button class="btn-sm" onclick="UI._exportAction('${id}','txt')" title="Descargar como TXT">TXT</button>
+        <button class="btn-sm" onclick="UI._exportAction('${id}','md')" title="Descargar como Markdown">MD</button>
+        <button class="btn-sm" onclick="UI._exportAction('${id}','csv')" title="Descargar como CSV (Excel)">Excel</button>
+        <button class="btn-sm" onclick="UI._exportAction('${id}','pdf')" title="Imprimir / PDF">PDF</button>
       </div>
     `;
   },
